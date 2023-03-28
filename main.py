@@ -124,19 +124,20 @@ def get_data_from_file() -> tuple:
 
 def make_coeff_inequality(vect_a: list, det: tuple, sign: str) -> tuple:
     """Функция делающая коэффициенты для неравенства выпуклой оболочки"""
-    coeff = [det[0], -det[1], det[2], sign, -(-vect_a[0] * det[0] + vect_a[1] * det[1] - vect_a[2] * det[2])]
+    coefficients = [det[0], -det[1], det[2], sign, -(-vect_a[0] * det[0] + vect_a[1] * det[1] - vect_a[2] * det[2])]
     # приводим все неравенства к единому виду
-    if coeff[3] == '>=':
-        coeff = [data * -1 if isinstance(data, int) or isinstance(data, float) else data for data in coeff]
-    coeff[3] = '<='
-    return reduce_coeff(coeff)
+    if coefficients[3] == '>=':
+        coefficients = [data * -1 if isinstance(data, int) or isinstance(data, float) else data for data in
+                        coefficients]
+    coefficients[3] = '<='
+    return reduce_coeff(coefficients)
 
 
 def reduce_coeff(list_coeff: list) -> tuple:
     """Функция для сокращения коэффициентов в неравенстве лин.оболочки"""
     # считаем нод и сокращаем все коэффициенты на GCD
     my_gcd = gcd(gcd(list_coeff[0], list_coeff[1]), gcd(list_coeff[2], list_coeff[4]))
-    res = [coeff // my_gcd if isinstance(coeff, int) or isinstance(coeff, float) else coeff for coeff in list_coeff]
+    res = [coef // my_gcd if isinstance(coef, int) or isinstance(coef, float) else coef for coef in list_coeff]
     return tuple(res)
 
 
