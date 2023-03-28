@@ -140,6 +140,39 @@ def reduce_coeff(list_coeff: list) -> tuple:
     return tuple(res)
 
 
+def _beautiful_coeff(x: int, letter: str) -> str:
+    """Для формирования 1 красивого коэффициента"""
+    ans = ''
+    if x > 0:
+        if x == 1:
+            ans += f'+ {letter} '
+        else:
+            ans += f'+ {x}{letter} '
+    elif x < 0:
+        if x == -1:
+            ans += f'- {letter} '
+        else:
+            ans += f'- {abs(x)}{letter} '
+    return ans
+
+
+def beautiful_output(coefficients: tuple):
+    """Вывод красивого неравенства в консоль"""
+    ans = ''
+    # подготавливаем коэфф x к выводу
+    ans += _beautiful_coeff(coefficients[0], 'x')
+
+    # подготавливаем коэфф y к выводу
+    ans += _beautiful_coeff(coefficients[1], 'y')
+
+    # подготавливаем коэфф z к выводу
+    ans += _beautiful_coeff(coefficients[2], 'z')
+
+    ans += f'{coefficients[3]} {coefficients[4]}'
+    ans = ans.strip('+ ')
+    print(ans)
+
+
 def convex_hull(matrix_points: list) -> set:
     """Функция для построения линейной оболочки как множество лин.неравенств"""
 
@@ -195,4 +228,6 @@ if __name__ == '__main__':
 
         if data_from_user[0] == 'V':
             coeff = convex_hull(data_from_user[2])
-
+            print('[ANSWER] Неравенства задающие выпуклую оболочку фигуры:')
+            for inequal in coeff:
+                beautiful_output(inequal)
