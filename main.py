@@ -1,4 +1,5 @@
 import os
+from math import gcd
 
 
 def correct_format(string: str) -> bool:
@@ -12,7 +13,7 @@ def correct_format(string: str) -> bool:
 
 
 def correct_quant_strings(string: str) -> bool:
-    """Функция для проверки на число кол-во строк"""
+    """Функция для проверки на число кол-ва строк"""
     string = string.split()
     try:
         if not string or int(string[0]) <= 0:
@@ -107,7 +108,7 @@ def manual_input() -> tuple:
 
 
 def get_data_from_file() -> tuple:
-    """Получаем данные из файла и в зависимости от содержимого решаем нужную задачу"""
+    """Получаем данные из файла либо автоматически либо ручным вводом"""
 
     parametrs_comand_line = input().split()
     # parametrs_comand_line = sys.argv[1:]
@@ -121,15 +122,29 @@ def get_data_from_file() -> tuple:
         return manual_input()
 
 
-def make_coeff_inequality(vect_a: list, det: tuple, flag: str):
+def make_coeff_inequality(vect_a: list, det: tuple, sign: str) -> tuple:
     """Функция делающая коэффициенты для неравенства выпуклой оболочки"""
-    coeff = [det[0], det[1], det[2], - vect_a[0] * det[0] + vect_a[1] * det[1] - vect_a[2] * det[2], flag]
-    return coeff
+    coeff = [det[0], -det[1], det[2], sign, -(-vect_a[0] * det[0] + vect_a[1] * det[1] - vect_a[2] * det[2])]
+    # приводим все неравенства к единому виду
+    if coeff[3] == '>=':
+        coeff = [data * -1 if isinstance(data, int) or isinstance(data, float) else data for data in coeff]
+    coeff[3] = '<='
+    return reduce_coeff(coeff)
 
 
-def convex_hull(matrix_points: list):
+def reduce_coeff(list_coeff: list) -> tuple:
+    """Функция для сокращения коэффициентов в неравенстве лин.оболочки"""
+    # считаем нод и сокращаем все коэффициенты на GCD
+    my_gcd = gcd(gcd(list_coeff[0], list_coeff[1]), gcd(list_coeff[2], list_coeff[4]))
+    res = [coeff // my_gcd if isinstance(coeff, int) or isinstance(coeff, float) else coeff for coeff in list_coeff]
+    return tuple(res)
+
+
+def convex_hull(matrix_points: list) -> set:
     """Функция для построения линейной оболочки как множество лин.неравенств"""
 
+    # в множестве у нас хранятся кортежи с коэффициентами для итоговых неравенств
+    final_result = set()
     # выбираем 3 точки и строим 2 вектора по которым мы будем делать определитель
     for a in range(len(matrix_points) - 2):
         for b in range(a + 1, len(matrix_points)):
@@ -156,24 +171,28 @@ def convex_hull(matrix_points: list):
 
                 # подставляем все точки в определитель и смотрим где они лежат
                 for point in dop_matrix:
-                    result = calc_detrimental[0] * (point[0] - matrix_points[a][0]) + calc_detrimental[1] * (
+                    result = calc_detrimental[0] * (point[0] - matrix_points[a][0]) - calc_detrimental[1] * (
                             point[1] - matrix_points[a][1]) + calc_detrimental[2] * (point[2] - matrix_points[a][2])
                     if result > 0:
                         all_points_left = True
                     elif result < 0:
                         all_points_right = True
-
+                # если все точки лежат с одной стороны относительно построенной плоскости
+                # тогда строим коэффициенты неравенства
                 if (all_points_right + all_points_left) in [0, 1]:
                     if all_points_left:
-                        print(make_coeff_inequality(matrix_points[a], calc_detrimental, '>='))
+                        final_result.add(make_coeff_inequality(matrix_points[a], calc_detrimental, '>='))
                     else:
-                        print(make_coeff_inequality(matrix_points[a], calc_detrimental, '<='))
+                        final_result.add(make_coeff_inequality(matrix_points[a], calc_detrimental, '<='))
+    return final_result
 
 
 if __name__ == '__main__':
     # получаем данные пользователя
+    print('[INFO] Введите путь к файлу. Если будет введён \\n программа перейдёт в режим ручного ввода')
     data_from_user = get_data_from_file()
     if data_from_user:
 
         if data_from_user[0] == 'V':
-            convex_hull(data_from_user[2])
+            coeff = convex_hull(data_from_user[2])
+
