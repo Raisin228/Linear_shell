@@ -1,6 +1,9 @@
 import os
 
 
+# import sys
+
+
 def correct_format(string: str) -> bool:
     """Функция для проверки формата входного файла"""
     string = string.split()
@@ -28,8 +31,8 @@ def correct_point(string: list) -> list:
     """Функция для проверки на корректность точек введёных пользователем"""
     try:
         line = list(map(int, string))
-        if len(line) < 3:
-            print('[ERROR] Должно быть не меньше 3 координат точки!')
+        if len(line) < 3 or len(line) > 4:
+            print('[ERROR] Должно быть не меньше 3 НО не больше 4 координат точки/нер-ва!')
             return []
         return line
     except ValueError:
@@ -82,13 +85,16 @@ def get_data_automatic(param) -> tuple:
 def manual_input() -> tuple:
     """Для ручного ввода"""
     print('[INFO] Автопилот отключён!\nПерехожу на ручное управление')
-    form = input('Введите все данные вручную\nФормат входного файла (V/H): ')
+    form = input('Введите все данные вручную\nФормат входного файла (V/H): ').upper()
     output = []
     if correct_format(form):
         output.append(form.upper())
     else:
         return ()
-    quant_points = input('Число целочисленных точек трехмерного пространства: ')
+    if form == 'V':
+        quant_points = input('Число целочисленных точек трехмерного пространства: ')
+    else:
+        quant_points = input('Число неравенств: ')
     if correct_quant_strings(quant_points):
         output.append(quant_points)
         quant_points = int(quant_points)
@@ -97,7 +103,10 @@ def manual_input() -> tuple:
     i = 1
     points = []
     while i <= quant_points:
-        point = correct_point(input(f'Координаты точки {i} в формате 0 0 0: ').split())
+        if form == 'V':
+            point = correct_point(input(f'Координаты точки {i} в формате 0 0 0: ').split())
+        else:
+            point = correct_point(input(f'Коэффициенты нер-ва {i} в формате 0 0 0 0: ').split())
         if point:
             points.append(point)
             i += 1
@@ -121,27 +130,9 @@ def get_data_from_file() -> tuple:
         return manual_input()
 
 
-def reduce_coeff(list_coeff: list) -> tuple:
-    """Функция для сокращения коэффициентов в неравенстве лин.оболочки"""
-    # считаем нод и сокращаем все коэффициенты на GCD
-    my_gcd = gcd(gcd(list_coeff[0], list_coeff[1]), gcd(list_coeff[2], list_coeff[4]))
-    res = [coef // my_gcd if isinstance(coef, int) or isinstance(coef, float) else coef for coef in list_coeff]
-    return tuple(res)
-
-
-def make_coeff_inequality(vect_a: list, det: tuple, sign: str) -> tuple:
-    """Функция делающая коэффициенты для неравенства выпуклой оболочки"""
-    coefficients = [det[0], -det[1], det[2], sign, -(-vect_a[0] * det[0] + vect_a[1] * det[1] - vect_a[2] * det[2])]
-    # приводим все неравенства к единому виду
-    if coefficients[3] == '>=':
-        coefficients = [data * -1 if isinstance(data, int) or isinstance(data, float) else data for data in
-                        coefficients]
-    coefficients[3] = '<='
-    return reduce_coeff(coefficients)
-
-
 def gcd(x: int, y: int) -> int:
     """Greatest Common Divisor"""
+    x, y = abs(x), abs(y)
     if y == 0:
         return x
     else:
@@ -181,8 +172,27 @@ def beautiful_output(coefficients: tuple) -> None:
     print(ans)
 
 
+def reduce_coeff(list_coeff: list) -> tuple:
+    """Функция для сокращения коэффициентов в неравенстве лин.оболочки"""
+    # считаем нод и сокращаем все коэффициенты на GCD
+    my_gcd = G_C_D if ((G_C_D := gcd(gcd(list_coeff[0], list_coeff[1]), gcd(list_coeff[2], list_coeff[4]))) != 0) else 1
+    res = [coef // my_gcd if isinstance(coef, int) or isinstance(coef, float) else coef for coef in list_coeff]
+    return tuple(res)
+
+
+def make_coeff_inequality(vect_a: list, det: tuple, sign: str) -> tuple:
+    """Функция делающая коэффициенты для неравенства выпуклой оболочки"""
+    coefficients = [det[0], -det[1], det[2], sign, -(-vect_a[0] * det[0] + vect_a[1] * det[1] - vect_a[2] * det[2])]
+    # приводим все неравенства к единому виду
+    if coefficients[3] == '>=':
+        coefficients = [data * -1 if isinstance(data, int) or isinstance(data, float) else data for data in
+                        coefficients]
+    coefficients[3] = '<='
+    return reduce_coeff(coefficients)
+
+
 def convex_hull(matrix_points: list) -> set:
-    """Функция для построения линейной оболочки как множество лин.неравенств"""
+    """Функция для построения линейной оболочки как множество лин.неравенств (задание 1)"""
 
     # в множестве у нас хранятся кортежи с коэффициентами для итоговых неравенств
     final_result = set()
@@ -265,34 +275,39 @@ def gauss(mat: list) -> int:
                 mat[i][j] = mat[i][j] * multiplier_2 - mat[row][j] * multiplier_1
             # если вдруг строка превратилась в 0 то заканчиваем метод Гаусса т.к система имеет б.м решений
             # или если слева стоят нули а справа число -> система несовметна (у неё нет решений)
-            if not any(mat[i]) or not any(mat[i][:-1]):
+            if not any(mat[i][:-1]):
                 return 1
     # избавляемся от минусов и приводим всё что стоит на гл.диагонали к 1
     for row in range(len(mat)):
-        mat[row][3] //= mat[row][row]
-        mat[row][row] //= mat[row][row]
+        mat[row][3] /= mat[row][row]
+        mat[row][row] /= mat[row][row]
     return 0
 
 
-def beautiful_output_vertices(points: set) -> None:
+def beautiful_output_vertices(points: set) -> dict:
     """Ф-ия выводит точки которые являются вершинами многогранника"""
-    print(f'Number of vertices: {len(points)}')
+    dict_letters = {}
+    print(f'\nNumber of vertices: {len(points)}')
     # начинаем с буквы А и индекс возле буквы 0 (мы его не выводим)
     number_letter, index_letter = 65, 0
     for point in points:
+        point = list(map(int, point))
         string_for_output = ' '.join(list(map(str, point)))
         if index_letter == 0:
+            dict_letters[chr(number_letter)] = point
             print(f'{chr(number_letter)}: {string_for_output}')
+            dict_letters[chr(number_letter)] = point
         else:
             print(f'{chr(number_letter)}{index_letter}: {string_for_output}')
         number_letter += 1
         if number_letter > 90:
             number_letter = 65
             index_letter += 1
+    return dict_letters
 
 
 def vertex_enum(matrix_inequality: list) -> set:
-    """Функция для нахождения всех вершин многогранника по заданной лин.оболочке"""
+    """Функция для нахождения всех вершин многогранника по заданной лин.оболочке (задание 2)"""
     # берём по 3 неравенства и решаем матрицу методом гаусса для нахождения вершины
     res, ans = set(), set()
     for i in range(len(matrix_inequality) - 2):
@@ -311,32 +326,89 @@ def vertex_enum(matrix_inequality: list) -> set:
                 flag = False
                 break
         if flag:
-            ans.add(point)
+            ans.add(tuple([int(i) if i == 0 else i for i in list(point)]))
     return ans
+
+
+def skeleton(l_s: set, verts: set):
+    """Ф-ия для построения полиэдрального графа (задание 3)"""
+
+    # выбираем режим работы в котором будем строить граф
+    if l_s and verts is None:
+        # конвертируем данные в нужный формат + избавляемся от знака
+        received_inequalities = [list(i)[:3] + list(i)[4:] for i in l_s]
+        # нашли вершины + вывели их и запомнили какой букве сопоставляется координата
+        vertexes = vertex_enum(received_inequalities)
+        connect_point_letter = beautiful_output_vertices(vertexes)
+        vertexes = list(vertexes)
+        # матрица смежности
+        aject_matrix = [[0 for _ in vertexes] for _ in vertexes]
+        # берём 2 плоскости
+        for plane1 in range(len(l_s) - 1):
+            for plane2 in range(plane1 + 1, len(received_inequalities)):
+                # 2 точки
+                for point1 in range(len(vertexes) - 1):
+                    for point2 in range(point1 + 1, len(vertexes)):
+                        p1, p2 = vertexes[point1], vertexes[point2]
+                        # если обе точки лежат в пересечении 2-х плоскостей -> значит они на 1 прямой
+                        if (received_inequalities[plane1][0] * p1[0] + received_inequalities[plane1][1] * p1[1] +
+                            received_inequalities[plane1][2] * p1[2]) == received_inequalities[plane1][3] and (
+                                received_inequalities[plane2][0] * p1[0] + received_inequalities[plane2][1] * p1[1] +
+                                received_inequalities[plane2][2] * p1[2]) == received_inequalities[plane2][3]:
+                            if (received_inequalities[plane1][0] * p2[0] + received_inequalities[plane1][1] * p2[1] +
+                                received_inequalities[plane1][2] * p2[2]) == received_inequalities[plane1][3] and (
+                                    received_inequalities[plane2][0] * p2[0] +
+                                    received_inequalities[plane2][1] * p2[1] +
+                                    received_inequalities[plane2][2] * p2[2]) == received_inequalities[plane2][3]:
+                                aject_matrix[point1][point2] = 1
+                                aject_matrix[point2][point1] = 1
+
+        # вывод матрицы смежности
+        aject_matrix.insert(0, [let for let in connect_point_letter])
+        aject_matrix[0] = [' '] + aject_matrix[0]
+        [aject_matrix[i].insert(0, aject_matrix[0][i]) for i in range(len(aject_matrix)) if i != 0]
+        print('\nAdjacency matrix')
+        for row in range(len(aject_matrix)):
+            for column in range(len(aject_matrix[row])):
+                print(str(aject_matrix[row][column]).ljust(3), end='')
+            print()
 
 
 if __name__ == '__main__':
     # получаем данные пользователя
-    print('[INFO] Введите путь к файлу. Если будет введён \\n программа перейдёт в режим ручного ввода')
+    print('[INFO] Введите путь к файлу. '
+          'Если не будут заданы ар.командной строки программа перейдёт в режим ручного ввода')
     data_from_user = get_data_from_file()
     if data_from_user:
-
+        coeff, result = None, None
         # вызываем 1 задание
         if data_from_user[0] == 'V':
+            # оставляем только уникальные точки
+            points_data = {tuple(point) for point in data_from_user[2]}
             # выводим считанные точки
-            print('Считанные координаты точек: ', *[p for p in data_from_user[2]], sep='\n')
-            coeff = convex_hull(data_from_user[2])
+            print('Считанные координаты точек: ', *[p for p in points_data], sep='\n')
+            # передаём в функцию список состоящий только из уникальных точек
+            coeff = convex_hull(list(points_data))
+            print(f'\nNumber of faces: {len(coeff)}\n')
             print('[ANSWER] Неравенства задающие выпуклую оболочку фигуры:')
             for inequal in coeff:
                 beautiful_output(inequal)
         # вызываем 2 задание
         elif data_from_user[0] == 'H':
             # дополняем входные данные до стандартного вида и выводим неравенства в консоль
-            print('Неравенства которые были получены из файла')
+            # достраиваем нер-ва до стандартного вида и избавляемся от лин.зависимости
+            lin_depend = set()
             for inequality in data_from_user[2]:
                 ineq = inequality[:]
                 ineq.insert(3, '<=')
-                beautiful_output(tuple(ineq))
+                lin_depend.add(reduce_coeff(ineq))
+            # выводим уже лин.независимые нер-ва
+            print(f'\nNumber of faces: {len(lin_depend)}')
+            for inequality in lin_depend:
+                beautiful_output(tuple(inequality))
 
             result = vertex_enum(data_from_user[2])
             beautiful_output_vertices(result)
+
+        # вызываем 3 задание всегда
+        skeleton(coeff, result)
