@@ -298,6 +298,7 @@ def beautiful_output_vertices(points: set) -> dict:
             print(f'{chr(number_letter)}: {string_for_output}')
             dict_letters[chr(number_letter)] = point
         else:
+            dict_letters[chr(number_letter) + str(index_letter)] = point
             print(f'{chr(number_letter)}{index_letter}: {string_for_output}')
         number_letter += 1
         if number_letter > 90:
@@ -330,85 +331,101 @@ def vertex_enum(matrix_inequality: list) -> set:
     return ans
 
 
-def skeleton(l_s: set, verts: set):
+def _output_aject_matrix(a_j: list, point_letter: dict) -> None:
+    """вывод матрицы смежности"""
+    # добавляем первую и боковые строчки с буквами
+    a_j.insert(0, [let for let in point_letter])
+    a_j[0] = [' '] + a_j[0]
+    # добавляем боковые строчки с буквами
+    [a_j[i].insert(0, a_j[0][i]) for i in range(1, len(a_j))]
+    print('\n[INFO] Полиэдральный граф B.2\nAdjacency matrix')
+    for row in range(len(a_j)):
+        for column in range(len(a_j[row])):
+            print(str(a_j[row][column]).ljust(4), end='')
+        print()
+    print()
+
+
+def _output_enumeration_b2(data: dict) -> None:
+    """вывод полиэдрального графа во 2-ом формате"""
+    print('Перечисление всех граней')
+    for i in data:
+        print('Face:', end=' ')
+        j = list(i)
+        j.insert(3, '<=')
+        beautiful_output(tuple(j))
+        print('Vertices:', ', '.join(data[i][0]))
+        print('Edges:', ', '.join(data[i][1]), end='\n\n')
+
+
+def skeleton(l_s: set, verts: dict) -> None:
     """Ф-ия для построения полиэдрального графа (задание 3)"""
 
+    # как хранятся данные для вывода графа во 2 варианте
+    '''{нер-ва: [verts, edjes],
+        нер-ва: [verts, edjes]}'''
+    data_for_2nd_output = {}
+    # конвертируем данные в нужный формат + избавляемся от знака
+    received_inequalities = [list(i)[:3] + list(i)[4:] for i in l_s]
+    r_i = tuple(received_inequalities)
     # выбираем режим работы в котором будем строить граф
     if l_s and verts is None:
-        # как хранятся данные для вывода графа во 2 варианте
-        '''{нер-ва: [verts, edjes],
-            нер-ва: [verts, edjes]}'''
-        data_for_2nd_output = {}
-        # конвертируем данные в нужный формат + избавляемся от знака
-        received_inequalities = [list(i)[:3] + list(i)[4:] for i in l_s]
-        r_i = tuple(received_inequalities)
         # нашли вершины + вывели их + запомнили какой букве сопоставляется координата
-        vertexes = vertex_enum(received_inequalities)
-        connect_point_letter = beautiful_output_vertices(vertexes)
-        # матрица смежности
-        aject_matrix = [[0 for _ in vertexes] for _ in vertexes]
-        # берём 2 плоскости
-        for plane1 in range(len(received_inequalities) - 1):
-            for plane2 in range(plane1 + 1, len(received_inequalities)):
-                data_for_2nd_output.setdefault(tuple(r_i[plane1]), [set(), set()])
-                data_for_2nd_output.setdefault(tuple(r_i[plane2]), [set(), set()])
-                # 2 точки
-                count1 = 0
-                for point1 in connect_point_letter:
-                    count2 = 0
-                    for point2 in connect_point_letter:
-                        if point1 == point2:
-                            count2 += 1
-                            continue
-                        p1, p2 = connect_point_letter[point1], connect_point_letter[point2]
-                        # если обе точки лежат в пересечении 2-х плоскостей -> значит они на 1 прямой
-                        if (received_inequalities[plane1][0] * p1[0] + received_inequalities[plane1][1] * p1[1] +
-                            received_inequalities[plane1][2] * p1[2]) == received_inequalities[plane1][3] and (
-                                received_inequalities[plane2][0] * p1[0] + received_inequalities[plane2][1] * p1[1] +
-                                received_inequalities[plane2][2] * p1[2]) == received_inequalities[plane2][3]:
-                            # пометили что точка принадлежит плоскостям как вершина
-                            data_for_2nd_output[tuple(r_i[plane1])][0].add(point1)
-                            data_for_2nd_output[tuple(r_i[plane2])][0].add(point1)
+        verts = vertex_enum(received_inequalities)
+        connect_point_letter = beautiful_output_vertices(verts)
+    else:
+        connect_point_letter = verts
 
-                            if (received_inequalities[plane1][0] * p2[0] + received_inequalities[plane1][1] * p2[1] +
-                                received_inequalities[plane1][2] * p2[2]) == received_inequalities[plane1][3] and (
-                                    received_inequalities[plane2][0] * p2[0] +
-                                    received_inequalities[plane2][1] * p2[1] +
-                                    received_inequalities[plane2][2] * p2[2]) == received_inequalities[plane2][3]:
-                                # добавляем в матрицу смежности 1
-                                if count1 != count2:
-                                    aject_matrix[count1][count2] = 1
-                                    aject_matrix[count2][count1] = 1
-                                data_for_2nd_output[tuple(r_i[plane1])][0].add(point2)
-                                data_for_2nd_output[tuple(r_i[plane2])][0].add(point2)
-                                # указали что между этими точками есть ребро
-                                data_for_2nd_output[tuple(r_i[plane1])][1].add(
-                                    point1 + point2 if point1 < point2 else point2 + point1)
-                                data_for_2nd_output[tuple(r_i[plane2])][1].add(
-                                    point1 + point2 if point1 < point2 else point2 + point1)
+    # матрица смежности
+    aject_matrix = [[0 for _ in verts] for _ in verts]
+    # берём 2 плоскости
+    for plane1 in range(len(received_inequalities) - 1):
+        for plane2 in range(plane1 + 1, len(received_inequalities)):
+            data_for_2nd_output.setdefault(tuple(r_i[plane1]), [set(), set()])
+            data_for_2nd_output.setdefault(tuple(r_i[plane2]), [set(), set()])
+            # 2 точки
+            count1 = 0
+            for point1 in connect_point_letter:
+                count2 = 0
+                for point2 in connect_point_letter:
+                    if point1 == point2:
                         count2 += 1
-                    count1 += 1
+                        continue
+                    p1, p2 = connect_point_letter[point1], connect_point_letter[point2]
+                    # если обе точки лежат в пересечении 2-х плоскостей -> значит они на 1 прямой
+                    if (received_inequalities[plane1][0] * p1[0] + received_inequalities[plane1][1] * p1[1] +
+                        received_inequalities[plane1][2] * p1[2]) == received_inequalities[plane1][3] and (
+                            received_inequalities[plane2][0] * p1[0] + received_inequalities[plane2][1] * p1[1] +
+                            received_inequalities[plane2][2] * p1[2]) == received_inequalities[plane2][3]:
+                        # пометили что точка принадлежит плоскостям как вершина
+                        data_for_2nd_output[tuple(r_i[plane1])][0].add(point1)
+                        data_for_2nd_output[tuple(r_i[plane2])][0].add(point1)
 
-        # вывод матрицы смежности
-        # добавляем 0 и боковые строчки с буквами
-        aject_matrix.insert(0, [let for let in connect_point_letter])
-        aject_matrix[0] = [' '] + aject_matrix[0]
-        [aject_matrix[i].insert(0, aject_matrix[0][i]) for i in range(len(aject_matrix)) if i != 0]
-        print('\n[INFO] Полиэдральный граф B.2\nAdjacency matrix')
-        for row in range(len(aject_matrix)):
-            for column in range(len(aject_matrix[row])):
-                print(str(aject_matrix[row][column]).ljust(3), end='')
-            print()
-        print()
+                        if (received_inequalities[plane1][0] * p2[0] + received_inequalities[plane1][1] * p2[1] +
+                            received_inequalities[plane1][2] * p2[2]) == received_inequalities[plane1][3] and (
+                                received_inequalities[plane2][0] * p2[0] +
+                                received_inequalities[plane2][1] * p2[1] +
+                                received_inequalities[plane2][2] * p2[2]) == received_inequalities[plane2][3]:
+                            # добавляем в матрицу смежности 1
+                            if count1 != count2:
+                                aject_matrix[count1][count2] = 1
+                                aject_matrix[count2][count1] = 1
+                            data_for_2nd_output[tuple(r_i[plane1])][0].add(point2)
+                            data_for_2nd_output[tuple(r_i[plane2])][0].add(point2)
+                            # указали что между этими точками есть ребро
+                            data_for_2nd_output[tuple(r_i[plane1])][1].add(
+                                point1 + point2 if point1 < point2 else point2 + point1)
+                            data_for_2nd_output[tuple(r_i[plane2])][1].add(
+                                point1 + point2 if point1 < point2 else point2 + point1)
+                    count2 += 1
+                count1 += 1
 
-        # вывод второго формата
-        for i in data_for_2nd_output:
-            print('Face:', end=' ')
-            j = list(i)
-            j.insert(3, '<=')
-            beautiful_output(tuple(j))
-            print('Vertices:', ', '.join(data_for_2nd_output[i][0]))
-            print('Edges:', ', '.join(data_for_2nd_output[i][1]), end='\n\n')
+    # выводим матрицу смежности
+    _output_aject_matrix(aject_matrix, connect_point_letter)
+
+    # вывод второго формата
+    _output_enumeration_b2(data_for_2nd_output)
+
 
 
 if __name__ == '__main__':
@@ -439,13 +456,14 @@ if __name__ == '__main__':
                 ineq = inequality[:]
                 ineq.insert(3, '<=')
                 lin_depend.add(reduce_coeff(ineq))
+            coeff = lin_depend
             # выводим уже лин.независимые нер-ва
             print(f'\nNumber of faces: {len(lin_depend)}')
             for inequality in lin_depend:
                 beautiful_output(tuple(inequality))
 
             result = vertex_enum(data_from_user[2])
-            beautiful_output_vertices(result)
+            result = beautiful_output_vertices(result)
 
         # вызываем 3 задание всегда
         skeleton(coeff, result)
