@@ -3,7 +3,6 @@ import os
 
 # import sys
 
-
 def correct_format(string: str) -> bool:
     """Функция для проверки формата входного файла"""
     string = string.split()
@@ -40,15 +39,15 @@ def correct_point(string: list) -> list:
         return []
 
 
-def get_data_automatic(param) -> tuple:
+def get_data_automatic(param: str) -> tuple:
     """Чтение данных из файла автоматически"""
     # забираем аргументы командной строки и проверяем файл на существование
-    if not os.path.exists(param[0]):
+    if not os.path.exists(param):
         print('[ERROR] Неверно указан путь к файлу!')
         return ()
 
     # открытие файла и чтение данных
-    with open(param[0], encoding='UTF-8') as file:
+    with open(param, encoding='UTF-8') as file:
         data_from_file = []
         i = 0
         for line in file:
@@ -82,50 +81,78 @@ def get_data_automatic(param) -> tuple:
     return file_format, quantity_strings, data_from_file
 
 
-def manual_input() -> tuple:
+def manual_input() -> list:
     """Для ручного ввода"""
+    res = []
     print('[INFO] Автопилот отключён!\nПерехожу на ручное управление')
-    form = input('Введите все данные вручную\nФормат входного файла (V/H): ').upper()
-    output = []
-    if correct_format(form):
-        output.append(form.upper())
+    flag_2_files = input('Сколько файлов вы хотите ввести? (1/2) ').strip()
+    if flag_2_files in ['1', '2']:
+        for _ in range(int(flag_2_files)):
+            form = input(f'Введите все данные вручную для {_ + 1} файла\nФормат входного файла (V/H): ').upper()
+            output = []
+            if correct_format(form):
+                output.append(form.upper())
+            else:
+                return []
+            if form == 'V':
+                quant_points = input('Число целочисленных точек трехмерного пространства: ')
+            else:
+                quant_points = input('Число неравенств: ')
+            if correct_quant_strings(quant_points):
+                output.append(quant_points)
+                quant_points = int(quant_points)
+            else:
+                return []
+            i = 1
+            points = []
+            while i <= quant_points:
+                if form == 'V':
+                    point = correct_point(input(f'Координаты точки {i} в формате 0 0 0: ').split())
+                else:
+                    point = correct_point(input(f'Коэффициенты нер-ва {i} в формате 0 0 0 0: ').split())
+                if point:
+                    points.append(point)
+                    i += 1
+                else:
+                    return []
+            res.append([output[0], output[1], points])
+        return res
     else:
-        return ()
-    if form == 'V':
-        quant_points = input('Число целочисленных точек трехмерного пространства: ')
-    else:
-        quant_points = input('Число неравенств: ')
-    if correct_quant_strings(quant_points):
-        output.append(quant_points)
-        quant_points = int(quant_points)
-    else:
-        return ()
-    i = 1
-    points = []
-    while i <= quant_points:
-        if form == 'V':
-            point = correct_point(input(f'Координаты точки {i} в формате 0 0 0: ').split())
-        else:
-            point = correct_point(input(f'Коэффициенты нер-ва {i} в формате 0 0 0 0: ').split())
-        if point:
-            points.append(point)
-            i += 1
-        else:
-            return ()
-    return output[0], output[1], points
+        print(f'[ERROR] Неверное кол-во входных файлов!\nОжидалось (1/2) получено - {flag_2_files}')
+        return []
 
 
-def get_data_from_file() -> tuple:
-    """Получаем данные из файла либо автоматически либо ручным вводом"""
+def get_data() -> list:
+    """Получаем данные из файла автоматически либо ручным вводом"""
 
     parametrs_comand_line = input().split()
     # parametrs_comand_line = sys.argv[1:]
-    if len(parametrs_comand_line) > 0:
-        data_for_output = get_data_automatic(parametrs_comand_line)
-        if len(data_for_output) == 3:
-            return data_for_output[0], data_for_output[1], data_for_output[2]
+    # смотрим сколько файлов поступило в программу
+    if 0 < len(parametrs_comand_line) < 3:
+        flag1, flag2 = False, False
+        # если 1 файл
+        if len(parametrs_comand_line) == 1:
+            data_for_output = get_data_automatic(parametrs_comand_line[0])
+            data_for_output2 = []
+            flag1 = True
+        # если 2 файла
         else:
-            return ()
+            data_for_output = get_data_automatic(parametrs_comand_line[0])
+            data_for_output2 = get_data_automatic(parametrs_comand_line[1])
+            flag1, flag2 = True, True
+        # смотрим сколько всего файлов задано
+        if flag1 + flag2 == 1:
+            if len(data_for_output) == 3:
+                return [[data_for_output[0], data_for_output[1], data_for_output[2]]]
+            else:
+                return []
+        elif flag1 + flag2 == 2:
+            if len(data_for_output) == 3 and len(data_for_output2) == 3:
+                ans1 = [data_for_output[0], data_for_output[1], data_for_output[2]]
+                ans2 = [data_for_output2[0], data_for_output2[1], data_for_output2[2]]
+                return [ans1, ans2]
+            else:
+                return []
     else:
         return manual_input()
 
@@ -155,19 +182,19 @@ def _beautiful_coeff(x: int, letter: str) -> str:
     return ans
 
 
-def beautiful_output(coefficients: tuple) -> None:
+def beautiful_output(coeff: tuple) -> None:
     """Вывод красивого неравенства в консоль"""
     ans = ''
     # подготавливаем коэфф x к выводу
-    ans += _beautiful_coeff(coefficients[0], 'x')
+    ans += _beautiful_coeff(coeff[0], 'x')
 
     # подготавливаем коэфф y к выводу
-    ans += _beautiful_coeff(coefficients[1], 'y')
+    ans += _beautiful_coeff(coeff[1], 'y')
 
     # подготавливаем коэфф z к выводу
-    ans += _beautiful_coeff(coefficients[2], 'z')
+    ans += _beautiful_coeff(coeff[2], 'z')
 
-    ans += f'{coefficients[3]} {coefficients[4]}'
+    ans += f'{coeff[3]} {coeff[4]}'
     ans = ans.strip('+ ')
     print(ans)
 
@@ -182,13 +209,12 @@ def reduce_coeff(list_coeff: list) -> tuple:
 
 def make_coeff_inequality(vect_a: list, det: tuple, sign: str) -> tuple:
     """Функция делающая коэффициенты для неравенства выпуклой оболочки"""
-    coefficients = [det[0], -det[1], det[2], sign, -(-vect_a[0] * det[0] + vect_a[1] * det[1] - vect_a[2] * det[2])]
+    coeff = [det[0], -det[1], det[2], sign, -(-vect_a[0] * det[0] + vect_a[1] * det[1] - vect_a[2] * det[2])]
     # приводим все неравенства к единому виду
-    if coefficients[3] == '>=':
-        coefficients = [data * -1 if isinstance(data, int) or isinstance(data, float) else data for data in
-                        coefficients]
-    coefficients[3] = '<='
-    return reduce_coeff(coefficients)
+    if coeff[3] == '>=':
+        coeff = [data * -1 if isinstance(data, int) or isinstance(data, float) else data for data in coeff]
+    coeff[3] = '<='
+    return reduce_coeff(coeff)
 
 
 def convex_hull(matrix_points: list) -> set:
@@ -372,10 +398,14 @@ def skeleton(l_s: set, verts: dict) -> None:
     if l_s and verts is None:
         # нашли вершины + вывели их + запомнили какой букве сопоставляется координата
         verts = vertex_enum(received_inequalities)
+        # если мы дошли до построения полиэдрального графа и вершины не были найдены
+        vertexes.append(list(verts))
         connect_point_letter = beautiful_output_vertices(verts)
     else:
         connect_point_letter = verts
-
+    if verts is None:
+        print('[ERROR] Неверно заданы входные данные возможна введено недостаточное кол-во неравенств/вершин')
+        return
     # матрица смежности
     aject_matrix = [[0 for _ in verts] for _ in verts]
     # берём 2 плоскости
@@ -427,43 +457,90 @@ def skeleton(l_s: set, verts: dict) -> None:
     _output_enumeration_b2(data_for_2nd_output)
 
 
+def collision_detection(vertices1: list) -> None:
+    """Обнаружение столкновений многогранников в 3-х мерном пространстве
+     используя разность минковского и выпуклую оболочку"""
+
+    new_vertices_for_linear_shell = set()
+
+    # берём по 2 вершины и vert1 - vert2 таки образом находим новые вершины для лин.оболочки
+    for v1 in range(len(vertices1[0])):
+        for v2 in range(len(vertices1[1])):
+            vert1, vert2 = vertices1[0][v1], vertices1[1][v2]
+            res = vert1[0] - vert2[0], vert1[1] - vert2[1], vert1[2] - vert2[2]
+            # сохраняем координаты вершин для того чтобы построить вып.оболочку
+            new_vertices_for_linear_shell.add(res)
+
+    # строим новую выпуклую оболочку
+    coeff = convex_hull(list(new_vertices_for_linear_shell))
+
+    # проверяем на столкновение
+    flag = True
+    for i in coeff:
+        # не пересекаются
+        if i[0] * 0 + i[1] * 0 + i[2] * 0 > i[4]:
+            flag = False
+            break
+    if flag:
+        print('Многоуольник 1 и многоугольник 2 - ПЕРЕСЕКАЮТСЯ')
+    else:
+        print('Многоуольник 1 и многоугольник 2 - НЕ ПЕРЕСЕКАЮТСЯ')
+
 
 if __name__ == '__main__':
     # получаем данные пользователя
     print('[INFO] Введите путь к файлу. '
           'Если не будут заданы ар.командной строки программа перейдёт в режим ручного ввода')
-    data_from_user = get_data_from_file()
+    data_from_user = get_data()
     if data_from_user:
-        coeff, result = None, None
-        # вызываем 1 задание
-        if data_from_user[0] == 'V':
-            # оставляем только уникальные точки
-            points_data = {tuple(point) for point in data_from_user[2]}
-            # выводим считанные точки
-            print('Считанные координаты точек: ', *[p for p in points_data], sep='\n')
-            # передаём в функцию список состоящий только из уникальных точек
-            coeff = convex_hull(list(points_data))
-            print(f'\nNumber of faces: {len(coeff)}\n')
-            print('[ANSWER] Неравенства задающие выпуклую оболочку фигуры:')
-            for inequal in coeff:
-                beautiful_output(inequal)
-        # вызываем 2 задание
-        elif data_from_user[0] == 'H':
-            # дополняем входные данные до стандартного вида и выводим неравенства в консоль
-            # достраиваем нер-ва до стандартного вида и избавляемся от лин.зависимости
-            lin_depend = set()
-            for inequality in data_from_user[2]:
-                ineq = inequality[:]
-                ineq.insert(3, '<=')
-                lin_depend.add(reduce_coeff(ineq))
-            coeff = lin_depend
-            # выводим уже лин.независимые нер-ва
-            print(f'\nNumber of faces: {len(lin_depend)}')
-            for inequality in lin_depend:
-                beautiful_output(tuple(inequality))
+        number_ans = 1
+        # здесь я буду хранить вершины 2-х многогранников для обнаружения столкновений
+        vertexes = []
+        for file_with_data in data_from_user:
+            print(f'==========[INFO]Ответ для файла {number_ans}==========')
+            coefficients, result = None, None
+            # вызываем 1 задание
+            if file_with_data[0] == 'V':
+                # оставляем только уникальные точки
+                points_data = {tuple(point) for point in file_with_data[2]}
+                # выводим считанные точки
+                print('\nСчитанные координаты точек: ', *[p for p in points_data], sep='\n')
+                # передаём в функцию список состоящий только из уникальных точек
+                coefficients = convex_hull(list(points_data))
+                print(f'\nNumber of faces: {len(coefficients)}\n')
+                print('[ANSWER] Неравенства задающие выпуклую оболочку фигуры:')
+                for inequal in coefficients:
+                    beautiful_output(inequal)
+            # вызываем 2 задание
+            elif file_with_data[0] == 'H':
+                # дополняем входные данные до стандартного вида и выводим неравенства в консоль
+                # достраиваем нер-ва до стандартного вида и избавляемся от лин.зависимости
+                lin_depend = set()
+                for inequality in file_with_data[2]:
+                    ineq = inequality[:]
+                    ineq.insert(3, '<=')
+                    lin_depend.add(reduce_coeff(ineq))
+                coefficients = lin_depend
+                # выводим уже лин.независимые нер-ва
+                print(f'\nNumber of faces: {len(lin_depend)}')
+                for inequality in lin_depend:
+                    beautiful_output(tuple(inequality))
 
-            result = vertex_enum(data_from_user[2])
-            result = beautiful_output_vertices(result)
+                result = vertex_enum(file_with_data[2])
+                # закидываем найденные вершины в хранилище
+                vertexes.append(list(result))
+                result = beautiful_output_vertices(result)
 
-        # вызываем 3 задание всегда
-        skeleton(coeff, result)
+            # вызываем 3 задание всегда
+            skeleton(coefficients, result)
+            number_ans += 1
+
+        # вызываем ф-ию для проверки коллизий фигур
+        if len(data_from_user) == 2:
+            print('==========Collision Detection==========')
+            print(
+                '[INFO] Обнаружение столкновений для многогранников с большим кол-вом вершин '
+                'может занять некоторое время!\nМы работаем над вычислениями, пожалуйста подождите...')
+            collision_detection(vertexes)
+        else:
+            print('==========[INFO] Нет столкновения потому что в программу поступил только 1 многогранник==========')
