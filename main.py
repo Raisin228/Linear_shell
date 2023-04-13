@@ -1,7 +1,8 @@
+# для рисовалки нужен matplotlib
+import matplotlib.pyplot as plt
 import os
+import sys
 
-
-# import sys
 
 def correct_format(string: str) -> bool:
     """Функция для проверки формата входного файла"""
@@ -125,8 +126,8 @@ def manual_input() -> list:
 def get_data() -> list:
     """Получаем данные из файла автоматически либо ручным вводом"""
 
-    parametrs_comand_line = input().split()
-    # parametrs_comand_line = sys.argv[1:]
+    # parametrs_comand_line = input().split()
+    parametrs_comand_line = sys.argv[1:]
     # смотрим сколько файлов поступило в программу
     if 0 < len(parametrs_comand_line) < 3:
         flag1, flag2 = False, False
@@ -234,9 +235,6 @@ def convex_hull(matrix_points: list) -> set:
                 vector_ac = [matrix_points[c][num2] - matrix_points[a][num1] for num1 in range(len(matrix_points[a]))
                              for num2 in range(len(matrix_points[c])) if num1 == num2]
 
-                # создаём матрицу содержащую точки которые не участвуют в построении векторов
-                dop_matrix = [point for point in matrix_points if
-                              point != matrix_points[a] and point != matrix_points[b] and point != matrix_points[c]]
                 # формируем определитель из 2 векторов и 1 точки
                 # 1 строка выглядит так -> 1 2 3 -> (x-1) (y - 2) (z - 3)
                 det.append(matrix_points[a])
@@ -248,13 +246,19 @@ def convex_hull(matrix_points: list) -> set:
                     det[1][0] * det[2][1] - det[2][0] * det[1][1]
 
                 # подставляем все точки в определитель и смотрим где они лежат
-                for point in dop_matrix:
+                for ind in range(len(matrix_points)):
+                    if ind == a or ind == b or ind == c:
+                        continue
+                    point = matrix_points[ind]
                     res = calc_detrimental[0] * (point[0] - matrix_points[a][0]) - calc_detrimental[1] * (
                             point[1] - matrix_points[a][1]) + calc_detrimental[2] * (point[2] - matrix_points[a][2])
                     if res > 0:
                         all_points_left = True
                     elif res < 0:
                         all_points_right = True
+                    # ускорение
+                    if (all_points_left + all_points_right) == 2:
+                        break
                 # если все точки лежат с одной стороны относительно построенной плоскости
                 # тогда строим коэффициенты неравенства
                 if (all_points_right + all_points_left) in [0, 1]:
@@ -305,8 +309,9 @@ def gauss(mat: list) -> int:
                 return 1
     # избавляемся от минусов и приводим всё что стоит на гл.диагонали к 1
     for row in range(len(mat)):
-        mat[row][3] /= mat[row][row]
-        mat[row][row] /= mat[row][row]
+        if mat[row][row] != 0:
+            mat[row][3] /= mat[row][row]
+            mat[row][row] /= mat[row][row]
     return 0
 
 
@@ -317,7 +322,7 @@ def beautiful_output_vertices(points: set) -> dict:
     # начинаем с буквы А и индекс возле буквы 0 (мы его не выводим)
     number_letter, index_letter = 65, 0
     for point in points:
-        point = list(map(int, point))
+        point = list(point)
         string_for_output = ' '.join(list(map(str, point)))
         if index_letter == 0:
             dict_letters[chr(number_letter)] = point
@@ -335,6 +340,12 @@ def beautiful_output_vertices(points: set) -> dict:
 
 def vertex_enum(matrix_inequality: list) -> set:
     """Функция для нахождения всех вершин многогранника по заданной лин.оболочке (задание 2)"""
+
+    # если задали плоскость а не многогранник -> ошибка
+    if len(matrix_inequality) < 3:
+        print('[ERROR] Ошибка в данных!\nВозможно в программу передаётся плоскость а не многогранник')
+        exit()
+
     # берём по 3 неравенства и решаем матрицу методом гаусса для нахождения вершины
     res, ans = set(), set()
     for i in range(len(matrix_inequality) - 2):
@@ -384,7 +395,7 @@ def _output_enumeration_b2(data: dict) -> None:
         print('Edges:', ', '.join(data[i][1]), end='\n\n')
 
 
-def skeleton(l_s: set, verts: dict) -> None:
+def skeleton(l_s: set, verts: dict) -> tuple:
     """Ф-ия для построения полиэдрального графа (задание 3)"""
 
     # как хранятся данные для вывода графа во 2 варианте
@@ -405,7 +416,7 @@ def skeleton(l_s: set, verts: dict) -> None:
         connect_point_letter = verts
     if verts is None:
         print('[ERROR] Неверно заданы входные данные возможна введено недостаточное кол-во неравенств/вершин')
-        return
+        return ()
     # матрица смежности
     aject_matrix = [[0 for _ in verts] for _ in verts]
     # берём 2 плоскости
@@ -455,6 +466,7 @@ def skeleton(l_s: set, verts: dict) -> None:
 
     # вывод второго формата
     _output_enumeration_b2(data_for_2nd_output)
+    return data_for_2nd_output, connect_point_letter
 
 
 def collision_detection(vertices1: list) -> None:
@@ -487,6 +499,44 @@ def collision_detection(vertices1: list) -> None:
         print('Многоуольник 1 и многоугольник 2 - НЕ ПЕРЕСЕКАЮТСЯ')
 
 
+def paint(data_files: list) -> None:
+    """Ф-ия для рисования 3D картинки"""
+    # data_files = [[словарь 2 вывод из задания skeleton, словарь связь точка буква], [то же самое]]
+    fig = plt.figure()
+    # добавляем 3-х мерное измерение и подписываем оси координат
+    axes = fig.add_subplot(projection='3d')
+    axes.set_xlabel('x')
+    axes.set_ylabel('y')
+    axes.set_zlabel('z')
+
+    c = 'blue'
+    # берём 1 файлик
+    for figure in data_files:
+        # словарь берём грань
+        for key in figure[0]:
+            # смотрим все вершинам и строим отрезок
+            for vert1 in figure[0][key][0]:
+                for vert2 in figure[0][key][0]:
+                    if vert1 == vert2:
+                        continue
+                    edge = ''.join(sorted(vert1 + vert2))
+
+                    if edge in figure[0][key][1]:
+                        v1, v2 = min(vert1, vert2), max(vert1, vert2)
+                        # считаем координаты начала и конца отрезка
+                        x = [figure[1][v1][0], figure[1][v2][0]]
+                        y = [figure[1][v1][1], figure[1][v2][1]]
+                        z = [figure[1][v1][2], figure[1][v2][2]]
+                        # рисуем отрезок
+                        plt.plot(x, y, z, color=c, linewidth=2)
+                        # подписываем края отрезка
+                        axes.text(x[0], y[0], z[0], f'{v1}{tuple(figure[1][v1])}')
+                        axes.text(x[1], y[1], z[1], f'{v2}{tuple(figure[1][v2])}')
+        c = 'orange'
+
+    plt.show()
+
+
 if __name__ == '__main__':
     # получаем данные пользователя
     print('[INFO] Введите путь к файлу. '
@@ -496,7 +546,10 @@ if __name__ == '__main__':
         number_ans = 1
         # здесь я буду хранить вершины 2-х многогранников для обнаружения столкновений
         vertexes = []
+        # вершины для рисовалки
+        data_for_paint = []
         for file_with_data in data_from_user:
+            paint_data_file = []
             print(f'==========[INFO]Ответ для файла {number_ans}==========')
             coefficients, result = None, None
             # вызываем 1 задание
@@ -505,8 +558,18 @@ if __name__ == '__main__':
                 points_data = {tuple(point) for point in file_with_data[2]}
                 # выводим считанные точки
                 print('\nСчитанные координаты точек: ', *[p for p in points_data], sep='\n')
+
+                # должно быть введено мин. 3 точки
+                if len(points_data) < 3:
+                    print('[WARNING]В программу должно быть передано <= чем 3 точки')
+                    exit()
+
                 # передаём в функцию список состоящий только из уникальных точек
                 coefficients = convex_hull(list(points_data))
+
+                # не берём нер-в вида 0x + 0y + 0z <= 1 / 0x + 0y + 0z <= 0
+                coefficients = [ineq for ineq in coefficients if any(ineq[:3])]
+
                 print(f'\nNumber of faces: {len(coefficients)}\n')
                 print('[ANSWER] Неравенства задающие выпуклую оболочку фигуры:')
                 for inequal in coefficients:
@@ -518,6 +581,11 @@ if __name__ == '__main__':
                 lin_depend = set()
                 for inequality in file_with_data[2]:
                     ineq = inequality[:]
+
+                    # не берём нер-в вида 0x + 0y + 0z <= 1 / 0x + 0y + 0z <= 0
+                    if not any(ineq[:2]):
+                        continue
+
                     ineq.insert(3, '<=')
                     lin_depend.add(reduce_coeff(ineq))
                 coefficients = lin_depend
@@ -526,14 +594,19 @@ if __name__ == '__main__':
                 for inequality in lin_depend:
                     beautiful_output(tuple(inequality))
 
-                result = vertex_enum(file_with_data[2])
-                # закидываем найденные вершины в хранилище
+                result = vertex_enum([list(i)[:3] + list(i)[4:] for i in lin_depend])
+                if not len(result):
+                    print('[WARNING]Ни одной вершины не было найдено ошибка в данных')
+                    exit()
+                # закидываем найденные вершины в хранилища
                 vertexes.append(list(result))
                 result = beautiful_output_vertices(result)
-
             # вызываем 3 задание всегда
-            skeleton(coefficients, result)
+            tmp = skeleton(coefficients, result)
+            paint_data_file.append(tmp[0])
+            paint_data_file.append(tmp[1])
             number_ans += 1
+            data_for_paint.append(paint_data_file)
 
         # вызываем ф-ию для проверки коллизий фигур
         if len(data_from_user) == 2:
@@ -544,3 +617,6 @@ if __name__ == '__main__':
             collision_detection(vertexes)
         else:
             print('==========[INFO] Нет столкновения потому что в программу поступил только 1 многогранник==========')
+
+        # вызываем рисовалку
+        paint(data_for_paint)
