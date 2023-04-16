@@ -1,7 +1,7 @@
 # для рисовалки нужен matplotlib
-import matplotlib.pyplot as plt
 import os
 import sys
+import matplotlib.pyplot as plt
 
 
 def correct_format(string: str) -> bool:
@@ -323,14 +323,14 @@ def beautiful_output_vertices(points: set) -> dict:
     number_letter, index_letter = 65, 0
     for point in points:
         point = list(point)
-        string_for_output = ' '.join(list(map(str, point)))
+        # string_for_output = ' '.join(list(map(str, point)))
         if index_letter == 0:
             dict_letters[chr(number_letter)] = point
-            print(f'{chr(number_letter)}: {string_for_output}')
+            print(f'{chr(number_letter)}: {point}')
             dict_letters[chr(number_letter)] = point
         else:
             dict_letters[chr(number_letter) + str(index_letter)] = point
-            print(f'{chr(number_letter)}{index_letter}: {string_for_output}')
+            print(f'{chr(number_letter)}{index_letter}: {point}')
         number_letter += 1
         if number_letter > 90:
             number_letter = 65
@@ -503,11 +503,15 @@ def paint(data_files: list) -> None:
     """Ф-ия для рисования 3D картинки"""
     # data_files = [[словарь 2 вывод из задания skeleton, словарь связь точка буква], [то же самое]]
     fig = plt.figure()
+    fig.canvas.manager.set_window_title('Лабораторная №4')
     # добавляем 3-х мерное измерение и подписываем оси координат
     axes = fig.add_subplot(projection='3d')
     axes.set_xlabel('x')
     axes.set_ylabel('y')
     axes.set_zlabel('z')
+
+    # словарь множество в котором будет храниться кортежи с координатами вершин которые уже были ранее подписаны
+    signed_vertexes = set()
 
     c = 'blue'
     # берём 1 файлик
@@ -519,7 +523,7 @@ def paint(data_files: list) -> None:
                 for vert2 in figure[0][key][0]:
                     if vert1 == vert2:
                         continue
-                    edge = ''.join(sorted(vert1 + vert2))
+                    edge = min(vert1, vert2) + max(vert1, vert2)
 
                     if edge in figure[0][key][1]:
                         v1, v2 = min(vert1, vert2), max(vert1, vert2)
@@ -528,10 +532,15 @@ def paint(data_files: list) -> None:
                         y = [figure[1][v1][1], figure[1][v2][1]]
                         z = [figure[1][v1][2], figure[1][v2][2]]
                         # рисуем отрезок
-                        plt.plot(x, y, z, color=c, linewidth=2)
+                        plt.plot(x, y, z, 'o-', color=c, linewidth=2, markersize=5)
                         # подписываем края отрезка
-                        axes.text(x[0], y[0], z[0], f'{v1}{tuple(figure[1][v1])}')
-                        axes.text(x[1], y[1], z[1], f'{v2}{tuple(figure[1][v2])}')
+                        if (x[0], y[0], z[0]) not in signed_vertexes:
+                            axes.text(x[0], y[0], z[0], f'{v1}{tuple(figure[1][v1])}')
+                            # запоминаем что в этом месте уже была подписанна точка
+                            signed_vertexes.add((x[0], y[0], z[0]))
+                        if (x[1], y[1], z[1]) not in signed_vertexes:
+                            axes.text(x[1], y[1], z[1], f'{v2}{tuple(figure[1][v2])}')
+                            signed_vertexes.add((x[1], y[1], z[1]))
         c = 'orange'
 
     plt.show()
@@ -583,7 +592,7 @@ if __name__ == '__main__':
                     ineq = inequality[:]
 
                     # не берём нер-в вида 0x + 0y + 0z <= 1 / 0x + 0y + 0z <= 0
-                    if not any(ineq[:2]):
+                    if not any(ineq[:3]):
                         continue
 
                     ineq.insert(3, '<=')
