@@ -1,6 +1,7 @@
 # для рисовалки нужен matplotlib
 import os
 import sys
+
 import matplotlib.pyplot as plt
 
 
@@ -61,7 +62,7 @@ def get_data_automatic(param: str) -> tuple:
             if i == 1 and correct_format(line[0]):
                 file_format = line[0].upper()
             # чтение и проверка кол-ва строк
-            elif i == 2 and len(line) == 1 and correct_quant_strings(line[0]):
+            elif i == 2 and correct_quant_strings(line[0]):
                 quantity_strings = int(line[0])
             # чтение данных с точками
             elif i > 2 and correct_point(line):
@@ -83,7 +84,7 @@ def get_data_automatic(param: str) -> tuple:
 
 
 def manual_input() -> list:
-    """Для ручного ввода"""
+    """Функция для ручного ввода"""
     res = []
     print('[INFO] Автопилот отключён!\nПерехожу на ручное управление')
     flag_2_files = input('Сколько файлов вы хотите ввести? (1/2) ').strip()
@@ -95,6 +96,7 @@ def manual_input() -> list:
                 output.append(form.upper())
             else:
                 return []
+            # в зависимости от разных форматов кидаем разное приглашение пользователю
             if form == 'V':
                 quant_points = input('Число целочисленных точек трехмерного пространства: ')
             else:
@@ -126,7 +128,6 @@ def manual_input() -> list:
 def get_data() -> list:
     """Получаем данные из файла автоматически либо ручным вводом"""
 
-    # parametrs_comand_line = input().split()
     parametrs_comand_line = sys.argv[1:]
     # смотрим сколько файлов поступило в программу
     if 0 < len(parametrs_comand_line) < 3:
@@ -167,19 +168,19 @@ def gcd(x: int, y: int) -> int:
         return gcd(y, x % y)
 
 
-def _beautiful_coeff(x: int, letter: str) -> str:
+def _beautiful_coeff(coeff: int, letter: str) -> str:
     """Для формирования 1 красивого коэффициента"""
     ans = ''
-    if x > 0:
-        if x == 1:
+    if coeff > 0:
+        if coeff == 1:
             ans += f'+ {letter} '
         else:
-            ans += f'+ {x}{letter} '
-    elif x < 0:
-        if x == -1:
+            ans += f'+ {coeff}{letter} '
+    elif coeff < 0:
+        if coeff == -1:
             ans += f'- {letter} '
         else:
-            ans += f'- {abs(x)}{letter} '
+            ans += f'- {abs(coeff)}{letter} '
     return ans
 
 
@@ -195,6 +196,7 @@ def beautiful_output(coeff: tuple) -> None:
     # подготавливаем коэфф z к выводу
     ans += _beautiful_coeff(coeff[2], 'z')
 
+    # прилепляем знак и число за знаком
     ans += f'{coeff[3]} {coeff[4]}'
     ans = ans.strip('+ ')
     print(ans)
@@ -219,7 +221,7 @@ def make_coeff_inequality(vect_a: list, det: tuple, sign: str) -> tuple:
 
 
 def convex_hull(matrix_points: list) -> set:
-    """Функция для построения линейной оболочки как множество лин.неравенств (задание 1)"""
+    """Функция для построения выпуклой оболочки как множество лин.неравенств (задание А.1)"""
 
     # в множестве у нас хранятся кортежи с коэффициентами для итоговых неравенств
     final_result = set()
@@ -230,10 +232,8 @@ def convex_hull(matrix_points: list) -> set:
                 det = []
                 all_points_left, all_points_right = False, False
                 # формируем 2 вектора
-                vector_ab = [matrix_points[b][num2] - matrix_points[a][num1] for num1 in range(len(matrix_points[a]))
-                             for num2 in range(len(matrix_points[b])) if num1 == num2]
-                vector_ac = [matrix_points[c][num2] - matrix_points[a][num1] for num1 in range(len(matrix_points[a]))
-                             for num2 in range(len(matrix_points[c])) if num1 == num2]
+                vector_ab = [matrix_points[b][ind] - matrix_points[a][ind] for ind in range(len(matrix_points[a]))]
+                vector_ac = [matrix_points[c][ind] - matrix_points[a][ind] for ind in range(len(matrix_points[a]))]
 
                 # формируем определитель из 2 векторов и 1 точки
                 # 1 строка выглядит так -> 1 2 3 -> (x-1) (y - 2) (z - 3)
@@ -323,14 +323,15 @@ def beautiful_output_vertices(points: set) -> dict:
     number_letter, index_letter = 65, 0
     for point in points:
         point = list(point)
-        # string_for_output = ' '.join(list(map(str, point)))
+        # в зависимости от индекса делаем разный вывод
         if index_letter == 0:
             dict_letters[chr(number_letter)] = point
             print(f'{chr(number_letter)}: {point}')
-            dict_letters[chr(number_letter)] = point
         else:
             dict_letters[chr(number_letter) + str(index_letter)] = point
             print(f'{chr(number_letter)}{index_letter}: {point}')
+
+        # инкрементируем букву
         number_letter += 1
         if number_letter > 90:
             number_letter = 65
@@ -513,6 +514,8 @@ def paint(data_files: list) -> None:
     # словарь множество в котором будет храниться кортежи с координатами вершин которые уже были ранее подписаны
     signed_vertexes = set()
 
+    # флаг того что точка была поставлена
+
     c = 'blue'
     # берём 1 файлик
     for figure in data_files:
@@ -533,6 +536,7 @@ def paint(data_files: list) -> None:
                         z = [figure[1][v1][2], figure[1][v2][2]]
                         # рисуем отрезок
                         plt.plot(x, y, z, 'o-', color=c, linewidth=2, markersize=5)
+                        plt.plot(x, y, z, 'o', color='black', linewidth=2, markersize=5)
                         # подписываем края отрезка
                         if (x[0], y[0], z[0]) not in signed_vertexes:
                             axes.text(x[0], y[0], z[0], f'{v1}{tuple(figure[1][v1])}')
@@ -568,9 +572,9 @@ if __name__ == '__main__':
                 # выводим считанные точки
                 print('\nСчитанные координаты точек: ', *[p for p in points_data], sep='\n')
 
-                # должно быть введено мин. 3 точки
-                if len(points_data) < 3:
-                    print('[WARNING]В программу должно быть передано <= чем 3 точки')
+                # должно быть введено мин. 4 точки
+                if len(points_data) < 4:
+                    print('[WARNING]В программу должно быть передано >= чем 4 точки')
                     exit()
 
                 # передаём в функцию список состоящий только из уникальных точек
@@ -604,9 +608,17 @@ if __name__ == '__main__':
                     beautiful_output(tuple(inequality))
 
                 result = vertex_enum([list(i)[:3] + list(i)[4:] for i in lin_depend])
+                # отлавливаем ошибки
                 if not len(result):
                     print('[WARNING]Ни одной вершины не было найдено ошибка в данных')
                     exit()
+                if len(result) < 4:
+                    print('[ERROR] Для того чтобы построить многогранник у него должно быть минимум 4 вершины')
+                    exit()
+                if len(lin_depend) < 4:
+                    print('[ERROR] Для того чтобы построить многогранник у него должно быть минимум 4 плоскости')
+                    exit()
+
                 # закидываем найденные вершины в хранилища
                 vertexes.append(list(result))
                 result = beautiful_output_vertices(result)
